@@ -6,10 +6,13 @@ header p { margin: 4px 0 0; color: #555; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 #method-toggle { margin-left: 4px; padding: 0; border: 0; background: none;
   color: #1769aa; font: inherit; cursor: pointer; text-decoration: underline; }
-/* Floating overlay so opening it never reflows the fixed-offset map below. */
-#method { position: absolute; top: 64px; left: 18px; right: 18px; max-width: 640px;
-  z-index: 3; color: #444; font-size: 13px; background: #fff; border: 1px solid #ddd;
-  border-radius: 10px; padding: 12px 16px; box-shadow: 0 8px 28px rgba(0,0,0,.14); }
+/* Closed: render nothing (no empty bordered box in the header flow). */
+#method { display: none; }
+/* Open: a floating overlay so it never reflows the fixed-offset map below. */
+#method[open] { display: block; position: absolute; top: 64px; left: 18px; right: 18px;
+  max-width: 640px; z-index: 3; color: #444; font-size: 13px; background: #fff;
+  border: 1px solid #ddd; border-radius: 10px; padding: 12px 16px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.14); }
 #method ul { margin: 4px 0 0; padding-left: 18px; }
 #method li { margin: 2px 0; }
 #method strong { color: #1a1a1a; }
