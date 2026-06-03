@@ -3,11 +3,30 @@ body { margin: 0; font: 15px/1.4 system-ui, sans-serif; color: #1a1a1a; }
 header { padding: 14px 18px 6px; }
 header h1 { margin: 0; font-size: 22px; }
 header p { margin: 4px 0 0; color: #555; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+#method-toggle { margin-left: 4px; padding: 0; border: 0; background: none;
+  color: #1769aa; font: inherit; cursor: pointer; text-decoration: underline; }
+/* Floating overlay so opening it never reflows the fixed-offset map below. */
+#method { position: absolute; top: 64px; left: 18px; right: 18px; max-width: 640px;
+  z-index: 3; color: #444; font-size: 13px; background: #fff; border: 1px solid #ddd;
+  border-radius: 10px; padding: 12px 16px; box-shadow: 0 8px 28px rgba(0,0,0,.14); }
+#method ul { margin: 4px 0 0; padding-left: 18px; }
+#method li { margin: 2px 0; }
+#method strong { color: #1a1a1a; }
 #modes { display: flex; gap: 6px; padding: 8px 18px; }
 #modes button { padding: 6px 14px; border: 1px solid #ccc; background: #fff;
   border-radius: 999px; cursor: pointer; }
 #modes button.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
 #map { position: absolute; inset: 120px 0 28px 0; }
+#legend { position: absolute; left: 12px; bottom: 12px; z-index: 1; background: #fff;
+  border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+.legend-title { font-weight: 600; margin-bottom: 4px; }
+#legend-scale { display: flex; }
+#legend-scale .swatch { width: 26px; height: 12px; display: block; }
+#legend-scale .swatch:first-child { border-radius: 3px 0 0 3px; }
+#legend-scale .swatch:last-child { border-radius: 0 3px 3px 0; }
+.legend-ends { display: flex; justify-content: space-between; margin-top: 2px; color: #555; }
 #panel { position: absolute; top: 130px; right: 14px; width: 280px; background: #fff;
   border: 1px solid #ddd; border-radius: 10px; padding: 14px 16px;
   box-shadow: 0 6px 24px rgba(0,0,0,.12); }

@@ -20,7 +20,30 @@ function colorExpr(mode) {
   ];
 }
 
+// Legend swatches are generated from RAMP so the key can never drift from the map.
+function buildLegend() {
+  const scale = document.getElementById("legend-scale");
+  scale.innerHTML = "";
+  RAMP.forEach((color, i) => {
+    const sw = document.createElement("span");
+    sw.className = "swatch";
+    sw.style.background = color;
+    sw.title = `${i} of 5 needs reachable`;
+    scale.appendChild(sw);
+  });
+}
+
+// "How this works" expander — toggles the <details> and the aria state.
+const methodToggle = document.getElementById("method-toggle");
+const methodDetails = document.getElementById("method");
+methodToggle.onclick = () => {
+  const open = methodDetails.open = !methodDetails.open;
+  methodToggle.setAttribute("aria-expanded", String(open));
+  methodToggle.textContent = open ? "How this works ▴" : "How this works ▾";
+};
+
 map.on("load", async () => {
+  buildLegend();
   // Lightweight published dataset (rounded minutes, empty cells dropped).
   // The full-precision scored_grid.geojson stays in the repo as source of truth.
   const res = await fetch("scored_grid.min.geojson");
@@ -51,8 +74,13 @@ function showPanel(props) {
   const modes = typeof props.modes === "string" ? JSON.parse(props.modes) : props.modes;
   const m = modes[activeMode];
   document.getElementById("cell-id").textContent = props.cell_id;
+  // binding_function is the slowest-OR-missing function. It only names a real
+  // constraint when something is missing; on a complete (5/5) cell every need is
+  // met, so naming a satisfied need "worst" is misleading — say so instead.
   document.getElementById("summary").textContent =
-    `${m.completeness}/5 reachable by ${activeMode}. Worst: ${m.binding_function}.`;
+    m.completeness === FUNCTIONS.length
+      ? `${m.completeness}/5 reachable by ${activeMode}. All needs met.`
+      : `${m.completeness}/5 reachable by ${activeMode}. Missing first: ${m.binding_function}.`;
   const ul = document.getElementById("functions");
   ul.innerHTML = "";
   for (const fn of FUNCTIONS) {
