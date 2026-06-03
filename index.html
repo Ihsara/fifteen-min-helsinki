@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The 15-Minute Helsinki</title>
+  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="app.css" rel="stylesheet" />
+</head>
+<body>
+  <header>
+    <h1>The 15-Minute Helsinki</h1>
+    <p>How many of five everyday needs are within 15 minutes — by mode.</p>
+  </header>
+  <div id="modes">
+    <button data-mode="walk" class="active">Walk</button>
+    <button data-mode="bike">Bike</button>
+    <button data-mode="transit">Transit</button>
+    <button data-mode="car">Car</button>
+  </div>
+  <div id="map"></div>
+  <aside id="panel" hidden>
+    <h2>Cell <span id="cell-id"></span></h2>
+    <p id="summary"></p>
+    <ul id="functions"></ul>
+    <button id="close-panel">Close</button>
+  </aside>
+  <footer>
+    Data: Helsinki Region Travel Time Matrix 2023 © Digital Geography Lab,
+    University of Helsinki (CC BY 4.0). Amenities © OpenStreetMap contributors.
+  </footer>
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
