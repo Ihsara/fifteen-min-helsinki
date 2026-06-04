@@ -4,15 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>The 15-Minute Helsinki</title>
-  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
   <link href="app.css" rel="stylesheet" />
 </head>
 <body>
   <header>
-    <h1>The 15-Minute Helsinki</h1>
-    <p>
-      Each 250&nbsp;m cell, scored 0–5: how many of five everyday needs are within
-      15&nbsp;minutes by the chosen mode.
+    <h1>By foot, a handful of islands. By bike, a continent.</h1>
+    <p class="thesis">How much of everyday life sits within 15&nbsp;minutes — and what these
+      neighbourhoods lack isn’t shops, it’s care.
       <button id="method-toggle" type="button" aria-expanded="false">How this works ▾</button>
     </p>
     <details id="method">
@@ -20,43 +18,51 @@
       <ul>
         <li><strong>It's a count, not an average.</strong> The number is how many of
           the five needs (working, supplying, caring, learning, enjoying) are
-          reachable — never a mean. Plentiful cafés can't paper over a missing
-          school. Five satisfied needs = a complete neighbourhood.</li>
-        <li><strong>"Living" isn't scored</strong> — home is the trip origin, so we
-          measure the five destinations you travel <em>to</em>.</li>
-        <li><strong>Travel is cell-to-cell, not door-to-door.</strong> Each amenity
-          is snapped to its 250&nbsp;m cell, and time is a precomputed lookup
-          between cell centres — fast for the whole region, but coarse: an amenity
-          14&nbsp;min away in the next cell can read as just over the line.</li>
-        <li><strong>Mode = a specific variant:</strong> Walk (average pace),
-          Bike (<em>fast</em> cyclist), Transit (rush-hour), Car (rush-hour).</li>
+          reachable — never a mean. Five satisfied needs = a complete neighbourhood.</li>
+        <li><strong>"Living" isn't scored</strong> — home is the trip origin.</li>
+        <li><strong>Travel is cell-to-cell, not door-to-door</strong> — a precomputed
+          lookup between 250&nbsp;m cell centres; fast for the whole region, but coarse.</li>
+        <li><strong>Mode = a specific variant:</strong> Walk (average), Bike (<em>fast</em>),
+          Transit (rush-hour), Car (rush-hour).</li>
       </ul>
     </details>
   </header>
-  <div id="modes">
-    <button data-mode="walk" class="active">Walk</button>
-    <button data-mode="bike">Bike</button>
-    <button data-mode="transit">Transit</button>
-    <button data-mode="car">Car</button>
+
+  <div id="controls">
+    <div id="modes">
+      <button data-mode="walk" class="active">Walk</button>
+      <button data-mode="bike">Bike</button>
+      <button data-mode="transit">Transit</button>
+      <button data-mode="car">Car</button>
+    </div>
+    <label id="net-toggle"><input type="checkbox" id="net-full" /> Show full network</label>
   </div>
-  <div id="map">
+
+  <div id="stage">
+    <canvas id="map"></canvas>
     <div id="legend">
       <div class="legend-title">Needs within 15 min</div>
-      <div id="legend-scale"></div>
-      <div class="legend-ends"><span>0</span><span>5</span></div>
+      <div id="legend-bar"></div>
+      <div class="legend-ends"><span>0 — none</span><span>5 — complete</span></div>
+    </div>
+    <div id="net-key" hidden>
+      <span><i class="k-rail"></i> Rail / metro</span>
+      <span><i class="k-tram"></i> Tram</span>
+      <span class="k-bus-row" hidden><i class="k-bus"></i> Trunk bus</span>
     </div>
   </div>
+
   <aside id="panel" hidden>
+    <button id="close-panel" aria-label="Close">×</button>
     <h2>Cell <span id="cell-id"></span></h2>
     <p id="summary"></p>
     <ul id="functions"></ul>
-    <button id="close-panel">Close</button>
   </aside>
+
   <footer>
     Data: Helsinki Region Travel Time Matrix 2023 © Digital Geography Lab,
-    University of Helsinki (CC BY 4.0). Amenities © OpenStreetMap contributors.
+    University of Helsinki (CC BY 4.0). Amenities & network © OpenStreetMap contributors.
   </footer>
-  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
