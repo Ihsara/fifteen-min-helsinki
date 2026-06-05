@@ -6,58 +6,116 @@
   <title>The 15-Minute Helsinki</title>
   <link href="app.css" rel="stylesheet" />
 </head>
-<body>
-  <header>
-    <h1>By foot, a handful of islands. By bike, a continent.</h1>
-    <p class="thesis">How much of everyday life sits within 15&nbsp;minutes — and what these
-      neighbourhoods lack isn’t shops, it’s care.
-      <button id="method-toggle" type="button" aria-expanded="false">How this works ▾</button>
-    </p>
-    <details id="method">
-      <summary class="sr-only">How this works</summary>
-      <ul>
-        <li><strong>It's a count, not an average.</strong> The number is how many of
-          the five needs (working, supplying, caring, learning, enjoying) are
-          reachable — never a mean. Five satisfied needs = a complete neighbourhood.</li>
-        <li><strong>"Living" isn't scored</strong> — home is the trip origin.</li>
-        <li><strong>Travel is cell-to-cell, not door-to-door</strong> — a precomputed
-          lookup between 250&nbsp;m cell centres; fast for the whole region, but coarse.</li>
-        <li><strong>Mode = a specific variant:</strong> Walk (average), Bike (<em>fast</em>),
-          Transit (rush-hour), Car (rush-hour).</li>
-      </ul>
-    </details>
-  </header>
-
-  <div id="controls">
-    <div id="modes">
-      <button data-mode="walk" class="active">Walk</button>
-      <button data-mode="bike">Bike</button>
-      <button data-mode="transit">Transit</button>
-      <button data-mode="car">Car</button>
+<body data-phase="story" data-step="0">
+  <header id="top">
+    <div class="head-full">
+      <h1>By foot, a handful of islands. By bike, a continent.</h1>
+      <p class="thesis">A 15-minute walk rarely covers daily life in Helsinki — a bike
+        changes everything. Stand anywhere and see your own 15 minutes.</p>
+      <button id="skip-map" type="button">Skip to map →</button>
     </div>
-    <label id="net-toggle"><input type="checkbox" id="net-full" /> Show full network</label>
-  </div>
+    <div class="head-mini"><span>The 15-Minute Helsinki</span>
+      <button id="replay" type="button" hidden>↑ Replay the story</button></div>
+  </header>
 
   <div id="stage">
     <canvas id="map"></canvas>
+
+    <!-- story copy: one .story-step shown at a time, driven by body[data-step] -->
+    <div id="story">
+      <section class="story-step" data-step="0">
+        <span class="step-kicker">The 15-Minute Helsinki · 1 of 5</span>
+        <h2>Only the bright core has it all on foot.</h2>
+        <p>A "15-minute city" means daily life — work, shops, care, learning, somewhere
+          to enjoy — within a 15-minute walk. By that test only Helsinki’s core qualifies:
+          just <strong>1,604</strong> of 6,656 cells score a full five on foot.</p>
+      </section>
+      <section class="story-step" data-step="1" hidden>
+        <span class="step-kicker">Press bike · 2 of 5</span>
+        <h2>…and the city <em class="gold">breathes open</em>.</h2>
+        <p>The complete area more than doubles — 1,604 → <strong>3,603</strong> cells.
+          A bike adds no roads; it just makes the same Helsinki reachable.</p>
+      </section>
+      <section class="story-step" data-step="2" hidden>
+        <span class="step-kicker">Step outside the core · 3 of 5</span>
+        <h2>Almost <em class="gold">everything</em> falls out of reach at once.</h2>
+        <p>Past the centre a 15-minute walk stops covering daily life — <strong>5,052</strong>
+          of 6,656 cells miss at least one need. The two that tip first are
+          <em class="c-work">work</em> (2,091) and <em class="c-care">care</em> (1,929),
+          neck and neck. Colours show the <em>first thing too far</em>.</p>
+        <p class="caveat">This is walking <em>proximity</em>, not provision — Helsinki has
+          clinics and offices; outside the core they’re just past a 15-minute walk.</p>
+      </section>
+      <section class="story-step" data-step="3" hidden>
+        <span class="step-kicker">Now it’s yours · 4 of 5</span>
+        <h2>Stand anywhere and see <em class="gold">your</em> 15 minutes.</h2>
+        <p>Pick a spot. The map shows what that corner reaches on foot, by bike, by
+          transit — and names the one thing that’s too far.</p>
+      </section>
+      <section class="story-step" data-step="4" hidden>
+        <span class="step-kicker">Free explore · 5 of 5</span>
+        <h2>Tap any cell to stand there.</h2>
+        <p>Switch modes to watch your 15-minute world grow.</p>
+      </section>
+      <nav id="story-nav">
+        <button id="prev" type="button">← Back</button>
+        <button id="next" type="button">Next →</button>
+      </nav>
+    </div>
+
+    <!-- controls: shown in explore phase -->
+    <div id="controls">
+      <div id="modes">
+        <button data-mode="walk" class="active">Walk</button>
+        <button data-mode="bike">Bike</button>
+        <button data-mode="transit">Transit</button>
+        <button data-mode="car">Car</button>
+      </div>
+      <label id="net-toggle"><input type="checkbox" id="net-full" /> Show full network</label>
+      <button id="method-toggle" type="button" aria-expanded="false">How this works ▾</button>
+    </div>
+
+    <!-- the "stand here" sheet (explore) -->
+    <aside id="panel" hidden>
+      <button id="close-panel" aria-label="Close">×</button>
+      <p id="lead"></p>
+      <p id="detail"></p>
+      <ul id="functions"></ul>
+    </aside>
+
     <div id="legend">
       <div class="legend-title">Needs within 15 min</div>
       <div id="legend-bar"></div>
       <div class="legend-ends"><span>0 — none</span><span>5 — complete</span></div>
+    </div>
+    <div id="bind-legend" hidden>
+      <span><i style="background:#a78bfa"></i> work</span>
+      <span><i style="background:#ff8a6b"></i> care</span>
+      <span><i style="background:#6fd3e6"></i> shops</span>
+      <span><i style="background:#8fc659"></i> learning</span>
+      <span><i style="background:#f4e36b"></i> a park</span>
     </div>
     <div id="net-key" hidden>
       <span><i class="k-rail"></i> Rail / metro</span>
       <span><i class="k-tram"></i> Tram</span>
       <span class="k-bus-row" hidden><i class="k-bus"></i> Trunk bus</span>
     </div>
-  </div>
 
-  <aside id="panel" hidden>
-    <button id="close-panel" aria-label="Close">×</button>
-    <h2>Cell <span id="cell-id"></span></h2>
-    <p id="summary"></p>
-    <ul id="functions"></ul>
-  </aside>
+    <details id="method">
+      <summary class="sr-only">How this works</summary>
+      <ul>
+        <li><strong>It’s a count, not an average.</strong> The number is how many of the
+          five needs (working, supplying, caring, learning, enjoying) are reachable.</li>
+        <li><strong>"Living" isn’t scored</strong> — home is the trip origin.</li>
+        <li><strong>Travel is cell-to-cell, not door-to-door</strong> — a precomputed
+          lookup between 250&nbsp;m cell centres; fast but coarse.</li>
+        <li><strong>The reach ring is approximate</strong> — it suggests how far ~15 min
+          gets you; it is not a routed isochrone.</li>
+        <li><strong>Mode = a specific variant:</strong> Walk (average), Bike (<em>fast</em>),
+          Transit (rush-hour), Car (rush-hour).</li>
+      </ul>
+    </details>
+  </div>
 
   <footer>
     Data: Helsinki Region Travel Time Matrix 2023 © Digital Geography Lab,

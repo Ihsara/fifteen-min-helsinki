@@ -36,14 +36,68 @@ function pickCell(cells, mx, my, maxDist) {
   return best;
 }
 
-// ---------- constants ----------
+// The five scored destination needs, in canonical order. Declared here (above the
+// pure helpers that use it) so standHereSentence can reuse it instead of re-listing.
 const FUNCTIONS = ["working", "supplying", "caring", "learning", "enjoying"];
+// Human labels for each need, used to build the "stand here" sentence.
+const HUMAN = { working:"work", supplying:"shops", caring:"care", learning:"learning", enjoying:"a park" };
+
+// Pure: build the "stand here" sentence + per-need list for one cell & mode.
+// Returns {lead, detail, items:[{fn,label,minutes,reachable,justOver}]}.
+// Reachable = minutes != null && <= 15; justOver = 15 < minutes <= 18.
+function standHereSentence(cell, mode) {
+  const m = cell.modes[mode];
+  const items = FUNCTIONS.map(fn => {
+    const mins = m.min[fn];
+    const reachable = mins != null && mins <= 15;
+    return { fn, label: mins == null ? "—" : Math.round(mins) + " min",
+      minutes: mins, reachable, justOver: mins != null && mins > 15 && mins <= 18 };
+  });
+  const reached = items.filter(i => i.reachable).map(i => HUMAN[i.fn]);
+  const verb = mode === "walk" ? "walk" : mode === "bike" ? "bike" : mode === "transit" ? "ride transit" : "drive";
+  if (m.completeness === FUNCTIONS.length) {
+    return { lead: `From here you can ${verb} to all five daily needs in 15 minutes.`, detail: "", items };
+  }
+  const list = reached.length === 0 ? "almost nothing"
+    : reached.length === 1 ? reached[0]
+    : reached.slice(0, -1).join(", ") + " and " + reached[reached.length - 1];
+  const bf = m.binding_function, bMin = m.min[bf];
+  // Overshoot is computed from the raw value and rounded UP, so a 15.4-min need reads
+  // "1 minute too far" rather than a self-contradictory "0 minutes too far".
+  const over = bMin == null ? null : Math.max(1, Math.ceil(bMin - 15));
+  const lead = `From here you can ${verb} to ${list} in 15 minutes.`;
+  const detail = bMin == null
+    ? `The nearest ${HUMAN[bf]} is out of reach entirely.`
+    : `The nearest ${HUMAN[bf]} is ${Math.round(bMin)} — ${over} minute${over === 1 ? "" : "s"} too far.`;
+  return { lead, detail, items };
+}
+
+// Story step 3 palette: colour an incomplete cell by its farthest (binding) need.
+const BIND_COLOR = { working:"#a78bfa", supplying:"#6fd3e6", caring:"#ff8a6b", learning:"#8fc659", enjoying:"#f4e36b" };
+function bindingColor(cell, mode) {
+  const m = cell.modes[mode];
+  if (m.completeness === 5) return "#2a3a30";
+  return BIND_COLOR[m.binding_function] || "#2a3a30";
+}
+
+// ---------- constants ----------
 const RAMP = ["#0c1116", "#123038", "#1f5e57", "#3f8e63", "#8fc659", "#f4e36b"];
 const GLOW = { 4: { col: "143,198,89", a: 0.32 }, 5: { col: "244,227,107", a: 0.55 } };
 const SEA = "#0e1a24", LAND = "#070a0d", COAST = "rgba(120,160,180,0.25)";
 const NET = { rail: "rgba(111,211,230,0.55)", tram: "rgba(230,154,111,0.5)", bus: "rgba(255,138,61,0.6)" };
 
 let activeMode = "walk", showFullNet = false;
+let phase = "story", step = 0;            // phase: "story" | "explore"; step: 0..4
+let origin = null;                         // chosen cell in explore mode
+const STEPS = 5;
+// per-step map emphasis: forced mode + render style
+const STEP_VIEW = [
+  { mode: "walk", style: "glow" },         // 0 hook
+  { mode: "bike", style: "glow" },         // 1 bloom
+  { mode: "walk", style: "binding" },      // 2 scarcity recolour
+  { mode: "walk", style: "glow" },         // 3 hand-off
+  { mode: "walk", style: "explore" },      // 4 free explore (phase flips to explore on enter)
+];
 let cells = [], bbox = null, proj = null, R = 8;
 let water = null, rail = null, tram = null, trunkbus = null;
 // The render-test harness loads this file without a #map canvas; guard so the
@@ -109,41 +163,95 @@ function drawGlow() {
   }
   ctx.restore();
 }
-function drawCells(hoverCell) {
+function drawCells(hoverCell, style) {
   for (const c of cells) {
     const comp = c.modes[activeMode].completeness;
     ctx.beginPath();
     hexVertices(c._px, c._py, R).forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
-    ctx.closePath(); ctx.fillStyle = RAMP[comp]; ctx.fill();
+    ctx.closePath();
+    ctx.fillStyle = style === "binding" ? bindingColor(c, activeMode) : RAMP[comp];
+    ctx.fill();
     if (c === hoverCell) { ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1.5; ctx.stroke(); }
+    if (c === origin) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); }
   }
 }
+function drawReachRing() {
+  if (!origin) return;
+  // schematic ~15-min reach: radius scales with mode (walk small → car large). NOT a routed isochrone.
+  const mult = { walk: 1, bike: 2.2, transit: 2.6, car: 3.4 }[activeMode] || 1;
+  const rad = R * 7 * mult;
+  ctx.save(); ctx.strokeStyle = "rgba(111,211,230,0.55)"; ctx.lineWidth = 1.4; ctx.setLineDash([5, 5]);
+  ctx.beginPath(); ctx.arc(origin._px, origin._py, rad, 0, 7); ctx.stroke(); ctx.restore();
+}
 function draw(hoverCell) {
+  const style = phase === "explore" ? "explore" : STEP_VIEW[step].style;
   ctx.fillStyle = LAND; ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
   drawWater();
   drawNetworkLines(rail, NET.rail, 1.6);
   drawNetworkLines(tram, NET.tram, 1.2);
   if (showFullNet && trunkbus) drawNetworkLines(trunkbus, NET.bus, 1.3);
-  drawGlow();
-  drawCells(hoverCell);
+  if (style !== "binding") drawGlow();
+  drawCells(hoverCell, style);
+  if (style === "explore") drawReachRing();
 }
 
 // ---------- panel ----------
 function showPanel(c) {
-  const m = c.modes[activeMode];
-  document.getElementById("cell-id").textContent = c.cell_id;
-  document.getElementById("summary").textContent = m.completeness === FUNCTIONS.length
-    ? `${m.completeness}/5 reachable by ${activeMode}. All needs met.`
-    : `${m.completeness}/5 reachable by ${activeMode}. Missing first: ${m.binding_function}.`;
+  const s = standHereSentence(c, activeMode);
+  document.getElementById("lead").textContent = s.lead;
+  document.getElementById("detail").textContent = s.detail;
   const ul = document.getElementById("functions"); ul.innerHTML = "";
-  for (const fn of FUNCTIONS) {
-    const mins = m.min[fn], reachable = mins != null && mins <= 15;
-    const li = document.createElement("li"); if (!reachable) li.className = "miss";
-    li.innerHTML = `<span>${fn}</span><span>${mins == null ? "—" : Math.round(mins) + " min"} ${reachable ? "✓" : "✗"}</span>`;
+  for (const it of s.items) {
+    const li = document.createElement("li");
+    if (!it.reachable) li.className = it.justOver ? "just-over" : "miss";
+    li.innerHTML = `<span>${HUMAN[it.fn]}</span><span>${it.label} ${it.reachable ? "✓" : "✗"}</span>`;
     ul.appendChild(li);
   }
   document.getElementById("panel").hidden = false;
 }
+
+// ---------- story controller ----------
+// The guided story is steps 0..3; step 4 IS the live explore view (its copy is an
+// intro hint shown until the first cell is tapped). STORY_STEPS = how many of the
+// five sections are story-navigated with Back/Next.
+const STORY_STEPS = 4;
+function syncChrome() {
+  document.body.dataset.phase = phase;
+  document.body.dataset.step = String(step);
+  const v = STEP_VIEW[step];
+  activeMode = phase === "explore" ? activeMode : v.mode;
+  // show only the current section; in explore, show the step-4 intro until a cell is picked
+  const shown = phase === "explore" ? (origin ? -1 : 4) : step;
+  document.querySelectorAll(".story-step").forEach(sec => {
+    sec.hidden = Number(sec.dataset.step) !== shown;
+  });
+  // legends: gradient for glow/explore, binding legend for step 2
+  const binding = phase === "story" && v.style === "binding";
+  document.getElementById("legend").hidden = binding;
+  document.getElementById("bind-legend").hidden = !binding;
+  document.getElementById("net-key").hidden = phase !== "explore";
+  // mode pills reflect the (forced or chosen) active mode
+  document.querySelectorAll("#modes button").forEach(b => b.classList.toggle("active", b.dataset.mode === activeMode));
+  // story nav enable/disable (only meaningful in story phase)
+  const prev = document.getElementById("prev"), next = document.getElementById("next");
+  if (prev) prev.disabled = step === 0;
+  if (next) next.textContent = step === STORY_STEPS - 1 ? "Explore →" : "Next →";
+  document.getElementById("replay").hidden = phase !== "explore";
+}
+function goStep(n) {
+  step = Math.max(0, Math.min(STORY_STEPS - 1, n));
+  phase = "story"; origin = null;
+  showFullNet = false;                       // don't bleed the explore net toggle back into the story
+  const nf = document.getElementById("net-full"); if (nf) nf.checked = false;
+  document.getElementById("panel").hidden = true;
+  syncChrome(); draw();
+}
+function goExplore() {
+  phase = "explore"; step = 4; activeMode = "walk"; origin = null;
+  document.getElementById("panel").hidden = true;
+  syncChrome(); draw();
+}
+function replay() { goStep(0); }
 
 // ---------- load + wire ----------
 async function boot() {
@@ -178,37 +286,62 @@ async function boot() {
   // The trunk-bus legend row only makes sense once the toggle reveals trunk buses,
   // and only if the data was actually baked. Drop it entirely when absent; otherwise
   // reveal it together with the "show full network" toggle below.
-  const busRow = document.querySelector("#net-key .k-bus-row");
-  if (!trunkbus) busRow.remove();
+  const busRow0 = document.querySelector("#net-key .k-bus-row");
+  if (!trunkbus && busRow0) busRow0.remove();
 
-  resize(); draw();
+  resize();
+  syncChrome(); draw();
 
+  // mode pills (explore only; story forces the mode, so guard in JS not just CSS)
   document.querySelectorAll("#modes button").forEach(btn => btn.onclick = () => {
+    if (phase !== "explore") return;
     activeMode = btn.dataset.mode;
     document.querySelectorAll("#modes button").forEach(b => b.classList.toggle("active", b === btn));
+    if (origin) showPanel(origin);
     draw();
   });
-  // The rail/tram spine is always drawn, so the key is always shown. The trunk-bus
-  // row stays hidden until the toggle is on (and only exists if trunkbus loaded).
-  const netKey = document.getElementById("net-key");
-  netKey.hidden = false;
+
+  // story navigation
+  document.getElementById("next").onclick = () => step === STORY_STEPS - 1 ? goExplore() : goStep(step + 1);
+  document.getElementById("prev").onclick = () => goStep(step - 1);
+  document.getElementById("skip-map").onclick = goExplore;
+  document.getElementById("replay").onclick = replay;
+  window.addEventListener("keydown", e => {
+    if (phase !== "story") return;
+    if (e.key === "ArrowRight") document.getElementById("next").click();
+    if (e.key === "ArrowLeft") document.getElementById("prev").click();
+  });
+  // desktop scroll advances the story (wheel), throttled by a small lock
+  let wheelLock = false;
+  window.addEventListener("wheel", e => {
+    if (phase !== "story" || wheelLock) return;
+    wheelLock = true; setTimeout(() => wheelLock = false, 450);
+    if (e.deltaY > 0) document.getElementById("next").click();
+    else if (e.deltaY < 0 && step > 0) document.getElementById("prev").click();
+  }, { passive: true });
+
+  // network toggle
+  const busRow2 = document.querySelector("#net-key .k-bus-row");
   document.getElementById("net-full").onchange = e => {
     showFullNet = e.target.checked;
-    if (trunkbus) busRow.hidden = !showFullNet;
+    if (trunkbus && busRow2) busRow2.hidden = !showFullNet;
     draw();
   };
 
+  // explore interaction: hover highlight + click sets origin
   canvas.onmousemove = e => {
+    if (phase !== "explore") return;
     const r = canvas.getBoundingClientRect();
     const hit = pickCell(cells, e.clientX - r.left, e.clientY - r.top, R);
     canvas.style.cursor = hit ? "pointer" : "default"; draw(hit);
   };
   canvas.onclick = e => {
+    if (phase !== "explore") return;
     const r = canvas.getBoundingClientRect();
     const hit = pickCell(cells, e.clientX - r.left, e.clientY - r.top, R);
-    if (hit) showPanel(hit);
+    if (hit) { origin = hit; showPanel(hit); syncChrome(); draw(); }  // syncChrome hides the step-4 intro
   };
-  document.getElementById("close-panel").onclick = () => document.getElementById("panel").hidden = true;
+  document.getElementById("close-panel").onclick = () => { origin = null; document.getElementById("panel").hidden = true; syncChrome(); draw(); };
   window.addEventListener("resize", () => { resize(); draw(); });
 }
 
